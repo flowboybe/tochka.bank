@@ -62,21 +62,26 @@ class Program
         var parts = move.Split('-');
         adjCopy[parts[0]].Remove(parts[1]);
         adjCopy[parts[1]].Remove(parts[0]);
+
         var virusMovePath = FindPathToClosestGate(adjCopy, currentVirusPos, gates);
-        if (virusMovePath.Length > 0)
-            currentVirusPos = virusMovePath[0].Item2;
+        if (virusMovePath.Length == 0) return true;
+        if (virusMovePath.Length == 1) return false;
+
+        var simulatedVirusPos = virusMovePath[0].Item2;
 
         while (true)
         {
-            var path = FindPathToClosestGate(adjCopy, currentVirusPos, gates);
+            var path = FindPathToClosestGate(adjCopy, simulatedVirusPos, gates);
             if (path.Length == 0) return true;
             var gateToCut = path.Last().Item2;
             var nodeToCut = path.Last().Item1;
             adjCopy[gateToCut].Remove(nodeToCut);
             adjCopy[nodeToCut].Remove(gateToCut);
-            var nextVirusPath = FindPathToClosestGate(adjCopy, currentVirusPos, gates);
-            if (nextVirusPath.Length > 0)
-                currentVirusPos = nextVirusPath[0].Item2;
+
+            var nextVirusPath = FindPathToClosestGate(adjCopy, simulatedVirusPos, gates);
+            if (nextVirusPath.Length == 0) return true;
+            if (nextVirusPath.Length == 1) return false;
+            simulatedVirusPos = nextVirusPath[0].Item2;
         }
     }
 
@@ -93,12 +98,12 @@ class Program
         }
 
         if (pathsToGates.Count == 0)
-            return Array.Empty<(string, string)>();
+            return [];
         pathsToGates
             .Sort((x, y) =>
             {
                 if (x.Length.CompareTo(y.Length) != 0) return x.Length.CompareTo(y.Length);
-                return x[^1].Item2[0].CompareTo(y[^1].Item2[0]);
+                return x.Last().Item2[0].CompareTo(y.Last().Item2[0]);
             });
         return pathsToGates[0];
     }
