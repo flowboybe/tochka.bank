@@ -8,80 +8,56 @@ class Program
     {
         var result = new List<string>();
         var adj = new Dictionary<string, HashSet<string>>();
-        foreach (var edgePair in edges)
+        foreach (var (node1, node2) in edges)
         {
-            if (!adj.ContainsKey(edgePair.Item1)) adj[edgePair.Item1] = new HashSet<string>();
-            adj[edgePair.Item1].Add(edgePair.Item2);
-            if (!adj.ContainsKey(edgePair.Item2)) adj[edgePair.Item2] = new HashSet<string>();
-            adj[edgePair.Item2].Add(edgePair.Item1);
+            if (!adj.ContainsKey(node1)) adj[node1] = new HashSet<string>();
+            adj[node1].Add(node2);
+            if (!adj.ContainsKey(node2)) adj[node2] = new HashSet<string>();
+            adj[node2].Add(node1);
         }
+        var gates = adj.Keys.Where(node => char.IsUpper(node[0])).ToHashSet();
+        var virusPosition = "a";
 
-        var gates = adj.Keys.Where(x => char.IsUpper(x[0])).ToHashSet();
-        var position = "a";
         while (true)
         {
-            if (FindPathToClosestGate(adj, position, gates).Length == 0)
+            if (FindPathToClosestGate(adj, virusPosition, gates).Length == 0)
                 break;
+            
             var possibleMoves = new List<string>();
             foreach (var gate in gates.OrderBy(g => g))
-                if (adj.TryGetValue(gate, out var value))
-                    foreach (var neighbor in value.OrderBy(n => n))
+                if (adj.TryGetValue(gate, out var neighbors))
+                    foreach (var neighbor in neighbors.OrderBy(n => n))
                         possibleMoves.Add($"{gate}-{neighbor}");
 
             string bestMove = null;
             foreach (var move in possibleMoves)
-                if (IsWinningMove(adj, gates, position, move))
-                {
-                    bestMove = move;
-                    break;
-                }
-
-            var parts = bestMove.Split('-');
-            var node1 = parts[0];
-            var node2 = parts[1];
-            adj[node1].Remove(node2);
-            adj[node2].Remove(node1);
+            {
+                var adjCopy = new Dictionary<string, HashSet<string>>();
+                foreach (var item in adj)
+                    adjCopy[item.Key] = new HashSet<string>(item.Value);
+                var parts = move.Split('-');
+                var node1 = parts[0];
+                var node2 = parts[1];
+                adjCopy[node1].Remove(node2);
+                adjCopy[node2].Remove(node1);
+                var virusMovePath = FindPathToClosestGate(adjCopy, virusPosition, gates);
+                if (virusMovePath.Length == 1)
+                    continue;
+                bestMove = move;
+                break;
+            }
+            var bestMoveParts = bestMove.Split('-');
+            var gateToCut = bestMoveParts[0];
+            var nodeToCut = bestMoveParts[1];
+            adj[gateToCut].Remove(nodeToCut);
+            adj[nodeToCut].Remove(gateToCut);
             result.Add(bestMove);
-            var virusMovePath = FindPathToClosestGate(adj, position, gates);
-            if (virusMovePath.Length > 0)
-                position = virusMovePath[0].Item2;
+            var nextVirusPath = FindPathToClosestGate(adj, virusPosition, gates);
+            if (nextVirusPath.Length > 0)
+                virusPosition = nextVirusPath[0].Item2;
         }
 
         return result;
-    }
-
-    private static bool IsWinningMove(
-        Dictionary<string, HashSet<string>> currentAdj,
-        ISet<string> gates,
-        string currentVirusPos,
-        string move)
-    {
-        var adjCopy = new Dictionary<string, HashSet<string>>();
-        foreach (var item in currentAdj)
-            adjCopy[item.Key] = [..item.Value];
-        var parts = move.Split('-');
-        adjCopy[parts[0]].Remove(parts[1]);
-        adjCopy[parts[1]].Remove(parts[0]);
-
-        var virusMovePath = FindPathToClosestGate(adjCopy, currentVirusPos, gates);
-        if (virusMovePath.Length == 0) return true;
-
-        var simulatedVirusPos = virusMovePath[0].Item2;
-
-        while (true)
-        {
-            var path = FindPathToClosestGate(adjCopy, simulatedVirusPos, gates);
-            if (path.Length == 0) return true;
-            var gateToCut = path.Last().Item2;
-            var nodeToCut = path.Last().Item1;
-            adjCopy[gateToCut].Remove(nodeToCut);
-            adjCopy[nodeToCut].Remove(gateToCut);
-
-            var nextVirusPath = FindPathToClosestGate(adjCopy, simulatedVirusPos, gates);
-            if (nextVirusPath.Length == 0) return true;
-            if (nextVirusPath.Length == 1) return false;
-            simulatedVirusPos = nextVirusPath[0].Item2;
-        }
     }
 
     private static (string, string)[] FindPathToClosestGate(Dictionary<string, HashSet<string>> edgesDict,
