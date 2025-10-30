@@ -65,7 +65,6 @@ class Program
 
         var virusMovePath = FindPathToClosestGate(adjCopy, currentVirusPos, gates);
         if (virusMovePath.Length == 0) return true;
-        if (virusMovePath.Length == 1) return false;
 
         var simulatedVirusPos = virusMovePath[0].Item2;
 
